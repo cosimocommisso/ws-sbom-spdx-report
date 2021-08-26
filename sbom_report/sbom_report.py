@@ -120,7 +120,7 @@ def create_package(package_name: str,
 def get_license_obj(lic_id: str, licenses_dict: dict) -> License:
     lic_id_dict = licenses_dict.get(lic_id)
     if lic_id_dict:
-        lic_obj = License(full_name=lic_id_dict['name'], identifier=lic_id_dict['licenseId'])
+        lic_obj = License(full_name=lic_id_dict['name'], identifier=f"LicenseRef-{lic_id_dict['licenseId']}")
     else:
         lic_obj = NoAssert()
 
@@ -224,7 +224,7 @@ def create_files(scope_token: str,
 def handle_file_licenses(licenses: list,
                          licenses_dict: dict) -> tuple:
     def __create_ext_license__(name):
-        ext_license = ExtractedLicense(identifier=name)
+        ext_license = ExtractedLicense(identifier=f"LicenseRef-{name}")
         ext_license.full_name = name
         ext_license.text = name
 
@@ -237,7 +237,7 @@ def handle_file_licenses(licenses: list,
         try:
             spdx_license_dict = licenses_dict[lic['spdxName']]
             logging.debug(f"Found license: {spdx_license_dict['licenseId']}")
-            spdx_license = License(full_name=spdx_license_dict['licenseId'], identifier=lic['spdxName'])
+            spdx_license = License(full_name=spdx_license_dict['licenseId'], identifier=f"LicenseRef-{lic['spdxName']}")
             found_lics.add(spdx_license)
             if spdx_license_dict['isDeprecatedLicenseId']:
                 logging.debug(f"License {lic['spdxName']} is deprecated")
@@ -333,7 +333,7 @@ def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description='Utility to create SBOM from WhiteSource data')
     parser.add_argument('-u', '--userKey', help="WS User Key", dest='ws_user_key', required=True)
-    parser.add_argument('-k', '--token', help="WS Organization Key", dest='ws_token', required=True)
+    parser.add_argument('-k', '--token', help="WS Organization Token", dest='ws_token', required=True)
     parser.add_argument('-s', '--scope', help="Scope token of SBOM report to generate", dest='scope_token', default=True)
     parser.add_argument('-a', '--wsUrl', help="WS URL", dest='ws_url', default="saas")
     parser.add_argument('-t', '--type', help="Output type", dest='type', choices=["tv", "json", "xml", "rdf", "yaml"], default='json')
