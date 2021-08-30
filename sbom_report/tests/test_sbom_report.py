@@ -22,7 +22,7 @@ class SbomReportTest(TestCase):
 
     def test_main(self):
         ret = sbom_report.main()
-        compared_file = get_file(f'examples/{os.path.split(ret)[1]}')
+        compared_file = get_file(f'../examples/{os.path.split(ret)[1]}')
         created_file = get_file(ret)
         import re
         expr = r'Created:\ .*'

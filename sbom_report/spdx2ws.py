@@ -9,8 +9,6 @@ from ws_sdk.client import WSClient
 args = None
 ignored_files = {'.tgz'}
 
-# logger = logging.getlogging(__name__)
-# logger.setLevel(logging.DEBUG if os.environ.get("DEBUG") else logging.INFO)
 logging.basicConfig(level=logging.DEBUG if os.environ.get("DEBUG") else logging.INFO,
                     format='%(levelname)s %(asctime)s %(process)s: %(message)s',
                     datefmt='%y-%m-%d %H:%M:%S')
@@ -46,31 +44,31 @@ def create_update_request(spdx_doc) -> dict:
             "aggregateModules": False,
             "preserveModuleStructure": False,
             "extraProperties": {},
-            "projects": {
+            "projects": [{
                 "coordinates": {
                     "artifactId": "TBD",
                     "version": ""
                 },
                 "dependencies": get_dependencies(spdx_doc),
                 "projectTags": []
-             }
+             }]
             }
 
 
 def parse_spdx(spdx_file: str):
     def load_parse_modules(f_name: str):
         if f_name.endswith('.json'):
-            parser_name = "jsonparser"
+            parser_name = "jsonyamlxml"
             builder_name = "jsonyamlxmlbuilders"
-        elif f_name.endswith('.rdf'):
-            parser_name = "rdf"
-            builder_name = "rdfbuilders"
-        elif f_name.endswith('.xml'):
-            parser_name = "xmlparser"
-            builder_name = "jsonyamlxmlbuilders"
-        elif f_name.endswith('.tv'):
-            parser_name = "tagvalue"
-            builder_name = "tagvaluebuilders"
+        # elif f_name.endswith('.rdf'):
+        #     parser_name = "rdf"
+        #     builder_name = "rdfbuilders"
+        # elif f_name.endswith('.xml'):
+        #     parser_name = "xmlparser"
+        #     builder_name = "jsonyamlxmlbuilders"
+        # elif f_name.endswith('.tv'):
+        #     parser_name = "tagvalue"
+        #     builder_name = "tagvaluebuilders"
         else:
             logging.error(f"Unsupported file format: {f_name}")
             return None
@@ -100,7 +98,7 @@ def get_dependencies(doc) -> list:
     def create_dep(f) -> dict:
         d = None
         if f.chk_sum:
-            if f.chk_sum.identifier is not "SHA1":
+            if f.chk_sum.identifier != "SHA1":
                 logging.warning(
                     f"File checksum of is not SHA1 ({f.chk_sum.identifier}). Chances are low that artificat will be recognized")
             d = {"artifactId": os.path.split(f.name)[-1],
@@ -128,7 +126,7 @@ def main():
         update_request = create_update_request(doc)
 
         file_path = os.path.join(args.output_dir, f"{doc.name}-update-request.json")
-        with open(file_path, 'w') as fp:
+        with open(file_path, 'w', encoding='utf-8') as fp:
             logging.info(f"Saved Update Request to: {os.path.join(os.getcwd(), file_path)}")
             fp.write(json.dumps(update_request))
 

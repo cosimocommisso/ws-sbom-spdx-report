@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO,
 
 args = ws_conn = extra_conf = None
 
+TOOL_VER = "0.3.0"
 ARCHIVE_SUFFICES = (".jar", ".zip", ".tar", ".gz", ".tgz", ".gem", ".whl")
 BIN_SUFFICES = (".dll", ".so", ".exe")
 SOURCE_SUFFICES = ("JavaScript")
@@ -24,7 +25,7 @@ SOURCE_SUFFICES = ("JavaScript")
 
 def init():
     global ws_conn, extra_conf
-    ws_conn = WS(url=args.ws_url, user_key=args.ws_user_key, token=args.ws_token, tool_details=("ps-sbom-report", "0.2.2"))
+    ws_conn = WS(url=args.ws_url, user_key=args.ws_user_key, token=args.ws_token, tool_details=("ps-spdx-suite", TOOL_VER))
     try:
         fp = open(args.extra, 'r')
         extra_conf = json.loads(fp.read())
@@ -70,8 +71,7 @@ def create_sbom_doc():
     doc.extracted_licenses = filter_dups_and_sort(extracted_licenses_from_files)
     doc.package.cr_text = ', '.join(sorted(list(copyrights_from_files)))
     file_path = write_file(doc, args.type)
-
-    logging.info("Finished report")
+    logging.info(f"Finished report: {file_path}")
 
     return file_path
 
@@ -161,7 +161,7 @@ def create_files(scope_token: str,
                 path = f"../{split_path[-4]}/{split_path[-3]}/{split_path[-2]}/"
                 logging.debug(f"Using {path} as file location")
             except KeyError:
-                logging.error(f"No path value in lib: {lib_name} ")
+                logging.warning(f"No path value in lib: {lib_name} ")
             except IndexError:
                 path = location['path']
                 logging.warning(f"Unable to create path value from last 3 sections of: {path}")
@@ -239,9 +239,9 @@ def handle_file_licenses(licenses: list,
             logging.debug(f"Found license: {spdx_license_dict['licenseId']}")
             spdx_license = License(full_name=spdx_license_dict['licenseId'], identifier=f"LicenseRef-{lic['spdxName']}")
             found_lics.add(spdx_license)
+            extracted_licenses.append(__create_ext_license__(lic['spdxName']))
             if spdx_license_dict['isDeprecatedLicenseId']:
                 logging.debug(f"License {lic['spdxName']} is deprecated")
-                extracted_licenses.append(__create_ext_license__(lic['spdxName']))
         except KeyError:
             logging.warning(f"License with identifier: {lic['name']} was not found")
             __create_ext_license__(lic['name'])
@@ -287,7 +287,7 @@ def fix_license(lic: dict):     # TODO: ALREADY IN SDK TO BE REMOVED
             lic['spdxName'] = "0BSD"
 
         if lic.get('spdxName'):
-            logging.info(f"Fixed spdxName of {lic['name']} to {lic['spdxName']}")
+            logging.debug(f"Fixed spdxName of {lic['name']} to {lic['spdxName']}")
         else:
             logging.warning(f"Unable to fix spdxName of {lic['name']}")
 
@@ -311,13 +311,13 @@ def set_file_type(file_type: str, filename: str):
 
 def write_file(doc: Document, type: str) -> ():
                   # Type: (suffix, module_name, f_open_flags, encoding)
-    file_types = {"json": ("json", "spdx.writers.json", "w", None),
-                  "tv": ("tv", "spdx.writers.tagvalue", "w", "utf-8"),
-                  "rdf": ("xml", "spdx.writers.rdf", "wb", None),
-                  "xml": ("xml", "spdx.writers.xml", "wb", None),
-                  "yaml": ("yml", "spdx.writers.yaml", "wb", None)}
+    file_types = {"json": (".json", "spdx.writers.json", "w", None),
+                  "tv": (".tv", "spdx.writers.tagvalue", "w", "utf-8"),
+                  "rdf": ("-rdf.xml", "spdx.writers.rdf", "wb", None),
+                  "xml": (".xml", "spdx.writers.xml", "wb", None),
+                  "yaml": (".yml", "spdx.writers.yaml", "wb", None)}
 
-    report_file = f"{doc.name}-{doc.version}.{file_types[type][0]}"
+    report_file = f"{doc.name}-{doc.version}{file_types[type][0]}"
     full_path = os.path.join(args.out_dir, report_file)
     import importlib
     module = importlib.import_module(file_types[type][1])           # Dynamically loading appropriate writer module
