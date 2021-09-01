@@ -15,26 +15,12 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s %(asctime)s %(thread)d: %(message)s',
                     datefmt='%y-%m-%d %H:%M:%S')
 
-args = ws_conn = extra_conf = None
+args = ws_conn = None
 
 TOOL_VER = "0.3.0"
 ARCHIVE_SUFFICES = (".jar", ".zip", ".tar", ".gz", ".tgz", ".gem", ".whl")
 BIN_SUFFICES = (".dll", ".so", ".exe")
 SOURCE_SUFFICES = ("JavaScript")
-
-
-def init():
-    global ws_conn, extra_conf
-    ws_conn = WS(url=args.ws_url, user_key=args.ws_user_key, token=args.ws_token, tool_details=("ps-spdx-suite", TOOL_VER))
-    try:
-        fp = open(args.extra, 'r')
-        extra_conf = json.loads(fp.read())
-    except FileNotFoundError:
-        logging.warning(f"Extra configuration file: {args.extra} was not found")
-    except json.JSONDecodeError:
-        logging.error(f"Unable to parse file: {args.extra}")
-    finally:
-        fp.close()
 
 
 def filter_dups_and_sort(items: list) -> list:
@@ -81,16 +67,16 @@ def create_document(token: str) -> Document:
     global ws_conn
     scope_name = ws_conn.get_scope_name_by_token(token)
     document = Document(name=f"WhiteSource {scope_name} SBOM report",
-                        namespace=extra_conf.get('namespace'),
+                        namespace=args.extra_conf.get('namespace', "DEFAULT_NAME"),
                         spdx_id="SPDXRef-DOCUMENT",
                         version=version.Version(2, 2),
                         data_license=License.from_identifier("CC0-1.0"))
 
     logging.debug(f"Creating SBOM Creation Info section")
     document.creation_info.set_created_now()
-    org = creationinfo.Organization(ws_conn.get_name(), extra_conf.get('org_email'))
+    org = creationinfo.Organization(ws_conn.get_name(), args.extra_conf.get('org_email'))
     tool = creationinfo.Tool("White Source SBOM Report Generator")
-    person = creationinfo.Person(extra_conf.get('person'), extra_conf.get('person_email'))
+    person = creationinfo.Person(args.extra_conf.get('person'), args.extra_conf.get('person_email'))
     document.creation_info.add_creator(org)
     document.creation_info.add_creator(tool)
     document.creation_info.add_creator(person)
@@ -105,12 +91,12 @@ def create_package(package_name: str,
     logging.debug(f"Creating SBOM Package section")
     pkg = package.Package(name=package_name,
                           spdx_id=f"SPDXRef-PACKAGE-{p_id}",
-                          download_location=extra_conf.get('package_location', NoAssert()))
-    pkg.check_sum = Algorithm(identifier="SHA1", value=extra_conf.get('package_sha1', NoAssert()))
-    pkg.license_declared = get_license_obj(extra_conf.get('package_license_identifier'), licenses_dict)
-    pkg.conc_lics = get_license_obj(extra_conf.get('package_conc_licenses'), licenses_dict)
-    pkg.cr_text = extra_conf.get('package_copyright_text', NoAssert())
-    pkg.supplier = creationinfo.Person(extra_conf.get('package_supplier', SPDXNone()), extra_conf.get('package_supplier_email', SPDXNone()))
+                          download_location=args.extra_conf.get('package_location', NoAssert()))
+    pkg.check_sum = Algorithm(identifier="SHA1", value=args.extra_conf.get('package_sha1', NoAssert()))
+    pkg.license_declared = get_license_obj(args.extra_conf.get('package_license_identifier'), licenses_dict)
+    pkg.conc_lics = get_license_obj(args.extra_conf.get('package_conc_licenses'), licenses_dict)
+    pkg.cr_text = args.extra_conf.get('package_copyright_text', NoAssert())
+    pkg.supplier = creationinfo.Person(args.extra_conf.get('package_supplier', SPDXNone()), args.extra_conf.get('package_supplier_email', SPDXNone()))
 
     logging.debug(f"Finished SBOM package section")
 
@@ -337,10 +323,22 @@ def parse_args():
     parser.add_argument('-s', '--scope', help="Scope token of SBOM report to generate", dest='scope_token', default=True)
     parser.add_argument('-a', '--wsUrl', help="WS URL", dest='ws_url', default="saas")
     parser.add_argument('-t', '--type', help="Output type", dest='type', choices=["tv", "json", "xml", "rdf", "yaml"], default='json')
-    parser.add_argument('-e', '--extra', help="Extra configuration of SBOM", dest='extra', default='sbom_extra.json')
+    parser.add_argument('-e', '--extra', help="Extra configuration of SBOM", dest='extra_file', default='sbom_extra.json')
     parser.add_argument('-o', '--out', help="Output directory", dest='out_dir', default=os.getcwd())
 
     return parser.parse_args()
+
+
+def init():
+    global ws_conn, args
+    ws_conn = WS(url=args.ws_url, user_key=args.ws_user_key, token=args.ws_token, tool_details=("ps-spdx-suite", TOOL_VER))
+
+    if os.path.isfile(args.extra_file):
+        with open(args.extra_file, 'r') as fp:
+            args.extra_conf = json.loads(fp.read())
+    else:
+        logging.warning(f"Extra configuration file: {args.extra_file} was not found")
+        args.extra_conf = {}
 
 
 def main():

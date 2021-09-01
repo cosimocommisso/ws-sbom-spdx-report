@@ -36,21 +36,18 @@ jobs:
       - name: Perform integration test and compare to existing report
         env:
           WS_USER_KEY: ${{ secrets.WS_USER_KEY }}
-          WS_SCOPE_PROJ: ${{ secrets.WS_SCOPE_PROJ_WEBGOAT_INTEGRATION_TESTS }}
+          WS_SCOPE: ${{ secrets.WS_SCOPE_PROJ_WEBGOAT_INTEGRATION_TESTS }}
           WS_SCOPE_ORG: ${{ secrets.WS_ORG_TOKEN }}
         run: python -m unittest
       - name: Full test JSON
         run: |
-          cd sbom_report
-          python sbom_report.py -u ${{ secrets.WS_USER_KEY }} -k ${{ secrets.WS_ORG_TOKEN }} -s ${{ secrets.WS_SCOPE_PROD_PYTHON }}
+          python spdx_suite/sbom_report.py -u ${{ secrets.WS_USER_KEY }} -k ${{ secrets.WS_ORG_TOKEN }} -s ${{ secrets.WS_SCOPE_PROD_PYTHON }}
       - name: Full test RDF
         run: |
-          cd sbom_report
-          python sbom_report.py -u ${{ secrets.WS_USER_KEY }} -k ${{ secrets.WS_ORG_TOKEN }} -s ${{ secrets.WS_SCOPE_PROD_GO }} -t rdf
+          python spdx_suite/sbom_report.py -u ${{ secrets.WS_USER_KEY }} -k ${{ secrets.WS_ORG_TOKEN }} -s ${{ secrets.WS_SCOPE_PROD_GO }} -t rdf
       - name: Full test TV (tag-value)
         run: |
-          cd sbom_report
-          python sbom_report.py -u ${{ secrets.WS_USER_KEY }} -k ${{ secrets.WS_ORG_TOKEN }} -s ${{ secrets.WS_SCOPE_PROD_JAVA_MAVEN }} -t tv
+          python spdx_suite/sbom_report.py -u ${{ secrets.WS_USER_KEY }} -k ${{ secrets.WS_ORG_TOKEN }} -s ${{ secrets.WS_SCOPE_PROD_JAVA_MAVEN }} -t tv
       - name: Zip release
         uses: papeloto/action-zip@v1
         with:

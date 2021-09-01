@@ -16,6 +16,7 @@ target/
 *.png
 *.tar.gz
 *.url
+*.log
 
 # Excluded Files - Naming Convention
 local-env.*
